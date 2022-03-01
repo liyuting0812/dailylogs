@@ -39,6 +39,10 @@ git remote add origin git@github.com:liyuting0812/dailylogs.git
 ```
 git add.
 git commit -m 'whatever'
+
+git pull
+#Editer （：wq）
+
 git push
 ```
 
