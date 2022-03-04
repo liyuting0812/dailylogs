@@ -1,0 +1,6 @@
+Y:
+  - y_name : ppi煤炭当月同比 # 这个名字自己写，但是要符合windows保存文件规范，不能有：/
+    db_name : y_ppi
+    name : PPI:煤炭开采和洗选业:当月同比
+    x_id : x_sw_coal_features
+    t_start : 2010-12-31
