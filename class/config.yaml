@@ -1,0 +1,15 @@
+ypath: 'M_data/y_sw_sysh.xlsx'
+xpath: M_data/x_sw_sysh.xlsx
+industry: sysh
+starttime: 2015-01-01
+
+Y:
+    db_name: y_ppi
+    collection_name:
+
+
+
+X:
+    db_name: x_sw_sysh
+    collection_name:
+

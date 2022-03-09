@@ -7,8 +7,17 @@ import matplotlib.pyplot as plt
 plt.rcParams['font.sans-serif'] = ['SimHei']  # 中文显示
 plt.rcParams['axes.unicode_minus'] = False  # 负号显示
 import matplotlib.ticker as ticker
+import warnings
+warnings.filterwarnings("ignore")
+from matplotlib.backends.backend_pdf import PdfPages
+import yaml
 
 
+def loading_config():
+    with open('config.yaml', 'r', encoding='utf-8') as f:
+        data = yaml.load(f.read(), yaml.FullLoader)
+    print('Loading config... >>> 读取本地配置')
+    return data
 
 def loc_zq_collection(db_name, collection_name):
     client = MongoClient("mongodb://192.168.1.9:27017")
@@ -42,23 +51,26 @@ def get_y_data(db_name,y_name):
     end_time = end_time.strftime("%Y-%m-%d")
     print(end_time)
     print('Y Done!')
-    return data
+    return data, end_time
 
 
 
-def data_processing(x):
 
-    x = x[x.index > '2015-01-01']
+def data_processing(x,t):
+
+    x = x[x.index > self.cfg['starttime']]
     '''
     可自行修改和添加初筛条件，包括起始时间，提取行数等
     '''
     x = x.resample('M').last()
     x.index = [i.strftime("%Y-%m-%d") for i in x.index]
 
-    x_data = x.iloc[:72]
+    x_data = x.loc[:t]
 
     print('X has been processed!')
     return x_data
+
+
 
 def direction(x):
     if x > 0:
@@ -88,14 +100,19 @@ def bo_zero(x_data,y_data):
 
     tick_spacing = 12
     fig = plt.figure()
-    for i in range(len(sc)):
-        ax = fig.add_subplot(int(len(sc)/2)+1,2,i+1)
-        ax.plot(x_data.index,x_data[sc.index[i]],label = sc.index[i])
-        ax.xaxis.set_major_locator(ticker.MultipleLocator(tick_spacing))
-        ax.tick_params(axis='x', labelsize=8, rotation=30)
-        plt.legend()
 
-    plt.savefig('M_data/fig.pdf')
+
+    with PdfPages("M_data/fig.pdf") as pdf:
+        for i in range(len(sc)):
+            # ax = fig.add_subplot(1, 1, 1)
+            plt.plot(x_data.index,x_data[sc.index[i]],label = sc.index[i])
+            plt.xticks(range(0, 85, 5), rotation=70)
+            # ax.xaxis.set_major_locator(ticker.MultipleLocator(tick_spacing))
+            plt.tick_params(axis='x', labelsize=8, rotation=30)
+            plt.legend()
+            pdf.savefig()
+            plt.close()
+
     print('0值过多：',sc)
 
     return score
@@ -109,22 +126,25 @@ def bo_zero(x_data,y_data):
 
 if __name__ == '__main__':
 
-    data = get_x_by_db_name('x_sw_BasicChemical')
-
-    data = data_processing(data)
-
+    data = get_x_by_db_name('x_sw_sysh')
+    # data = data[[data.columns[i] for i in range(len(data.columns))  if '销量' not in data.columns[i]]]
     '''
     通过bo_zero找出剔除数据，del 剔除
     '''
-    # del data['出厂价:煤制石脑油(组分柴油):陕西华航']
-    # del data['出厂价:渣油:东营东明化工']
-    # del data['最高零售价:汽油(标准品):天津']
+    # del data['市场价:二级冶金焦(A<15%,S<0.6%,Mt<7.0%,C>83%,昆明产):云南']
+    # del data['车板价:二级冶金焦(A<13.5%,S<0.6%,Mt<5%,M40>76%,平顶山产):河南']
+    del data['出厂价:煤制石脑油(组分柴油):陕西华航']
+    del data['出厂价:渣油:东营东明化工']
+    del data['最高零售价:汽油(标准品):天津']
 
-    data.to_excel('M_data/x_sw_BC.xlsx')
-    y_data = get_y_data('y_ppi','PPI:化学原料及化学制品制造业:当月同比')
-    y_data = data_processing(y_data)
-    y_data.to_excel('M_data/y_sw_BC.xlsx')
+
+    y_data,t = get_y_data('y_ppi','PPI:石油和天然气开采业:当月同比')
+    data = data_processing(data, t)
+    y_data = data_processing(y_data,t)
+
+    data.to_excel('M_data/x_sw_sysh.xlsx')
+    y_data.to_excel('M_data/y_sw_sysh.xlsx')
 
     score = bo_zero(data,y_data)
-    score['bo_score'].to_excel('M_data/Chemical_bo_score.xlsx')
-    print(score)
+    score['bo_score'].to_excel('M_data/sysh_bo_score.xlsx')
+

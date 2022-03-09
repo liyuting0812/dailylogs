@@ -9,17 +9,66 @@ import warnings
 warnings.filterwarnings("ignore")
 import matplotlib.pyplot as plt
 from statsmodels.stats.outliers_influence import variance_inflation_factor
+from pymongo import MongoClient
 import seaborn as sns
 import matplotlib.ticker as ticker
+import yaml
+import os
+
+plt.rcParams['font.sans-serif'] = ['SimHei']  # 中文显示
+plt.rcParams['axes.unicode_minus'] = False  # 负号显示
 
 class Features_Selection:
-    def __init__(self,ypath,xpath):
-        self.y_data = pd.read_excel(ypath,index_col=0)
-        self.x_data = pd.read_excel(xpath,index_col=0)
+
+    def __init__(self):
+        self.cfg = self.load_config()
+        # self.y_data = pd.read_excel(self.cfg['ypath'],index_col=0)
+        # self.x_data = pd.read_excel(self.cfg['xpath'],index_col=0)
         self.gcv = GapWalkForward(n_splits=5,gap_size=2,test_size=6)
 
 
 
+
+    def load_config(self):
+        with open("config.yaml", 'r', encoding='utf-8') as f:
+            data = yaml.load(f.read(), yaml.FullLoader)
+        print("loading_config... >>> 读取本地配置")
+        return data
+
+    def loc_zq_collection(self,collection_name):
+        client = MongoClient("mongodb://192.168.1.9:27017")
+        coll = client[self.cfg['db_name']][collection_name]
+        return coll
+
+    # def get_df_by_dict(self,s):
+    #     re = pd.DataFrame(s['data'], index=s['index'], columns=s['columns'])
+    #     re.sort_index(ascending=True, inplace=True)
+    #     re.index = pd.to_datetime(re.index)
+    #     print(s['columns'])
+    #     return re.iloc[:, 0]
+
+    def get_x_by_db_name(self):
+        cfg = self.load_config()
+        print(cfg['Y']['db_name'])
+        # meta_data = list(self.loc_zq_collection(db_name, 'metadata').find())
+        # map_id = {s['__id']: s['name'] for s in meta_data}
+        # data_li = list(self.loc_zq_collection(db_name, 'data').find())
+        # assert len(data_li) > 0
+
+
+    def data_processing(self,x,t):
+        x = self.x_data
+        x = x[x.index > self.cfg['starttime']]
+        '''
+        可自行修改和添加初筛条件，包括起始时间，提取行数等
+        '''
+        x = x.resample('M').last()
+        x.index = [i.strftime("%Y-%m-%d") for i in x.index]
+
+        x_data = x.loc[:t]
+
+        print('X has been processed!')
+        return x_data
 
     def gridSearch(self,i):
         best_ting = {'alpha': [0.01, 0.1, 0.5, 1, 5, 10, 20, 50, 100]}
@@ -108,9 +157,9 @@ class Features_Selection:
         y_pre = pd.Series(y_pre, index=y_test.index)
         mae_ = mae(y_test,y_pre)
         y_con = pd.concat([y_train,y_pre],axis=0)
-        print(self.y_data.index)
+        # print(self.y_data.index)
 
-        bo_data = pd.read_excel('M_data/bo_score.xlsx', index_col=0)
+        bo_data = pd.read_excel('M_data/'+str(self.cfg['industry'])+'_bo_score.xlsx', index_col=0)
 
         fig = plt.figure(figsize=(25, 45), dpi=80)
         tick_spacing = 12
@@ -139,10 +188,9 @@ class Features_Selection:
 
                 plt.legend()
 
-        plt.savefig('M_data/sy_BC_feature '+str(model) + '.pdf', format='pdf')
+        plt.savefig('M_data/sy_'+str(self.cfg['industry'])+'_feature '+str(model) + '.pdf', format='pdf')
 
 
 if __name__ == '__main__':
-    F = Features_Selection('M_data/y_sw_BC.xlsx','M_data/x_sw_BC.xlsx')
-
-    F.Plot()
+    F = Features_Selection()
+    F.get_x_by_db_name()
